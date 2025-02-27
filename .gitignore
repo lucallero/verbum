@@ -1,0 +1,13 @@
+# Rust-specific files
+/target
+/Cargo.lock
+
+# Dependencies
+**/target/
+**/.cargo/
+
+# Rust tests (if needed, ignore test output)
+/tests/output/
+
+# Build artifacts (compiled output)
+*.rs.bk
