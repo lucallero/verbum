@@ -11,3 +11,6 @@ async fn main() {
 async fn scrape_bible() {
     the_new_american_bible::scrape().await;
 }
+
+
+

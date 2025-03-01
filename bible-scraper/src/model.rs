@@ -4,6 +4,8 @@
 //     pub verse: u32,
 //     pub text: String,
 // }
+use serde::Deserialize;
+use std::collections::HashMap;
 
 pub struct Verse {
     pub number: u32,
@@ -33,4 +35,15 @@ pub struct Division {
 pub struct Bible {
     pub title: String,
     pub version: String,
+}
+
+//Metadata structures
+#[derive(Debug, Deserialize)]
+pub struct MetaBible {
+    pub books: HashMap<String, MetaBook>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MetaBook {
+    pub chapters: HashMap<u32, u32>,
 }
