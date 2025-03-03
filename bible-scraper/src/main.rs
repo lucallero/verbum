@@ -1,6 +1,7 @@
+// use the_new_american_bible;
 use tokio::{self};
 
-pub mod model;
+pub mod models;
 pub mod the_new_american_bible;
 
 #[tokio::main]
@@ -9,8 +10,5 @@ async fn main() {
 }
 
 async fn scrape_bible() {
-    the_new_american_bible::scrape().await;
+    let _ = the_new_american_bible::scrape().await;
 }
-
-
-

@@ -7,15 +7,11 @@
 use serde::Deserialize;
 use std::collections::HashMap;
 
-pub struct Verse {
-    pub number: u32,
-    pub text: String,
-}
+pub mod chapter;
+pub mod verse;
 
-pub struct Chapter {
-    pub number: u32,
-    pub verses: Vec<Verse>,
-}
+use chapter::Chapter;
+
 pub struct Book {
     pub title: String,
     pub chapters: Vec<Chapter>,

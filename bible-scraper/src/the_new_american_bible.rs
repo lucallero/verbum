@@ -3,56 +3,91 @@ use select::document::Document;
 use select::predicate::{Class, Name, Predicate};
 use std::fs;
 
-use crate::model::MetaBible;
+use crate::models::verse::Verse;
+use crate::models::MetaBible;
 
-pub async fn scrape() {
+async fn fetch(url: &str) -> Result<String, reqwest::Error> {
+    let response = Client::new().get(url).send().await?;
+    let text = response.text().await?;
+    Ok(text)
+}
+
+pub async fn scrape() -> Result<(), Box<dyn std::error::Error>> {
     let url = "https://www.vatican.va/archive/ENG0839/__P3.HTM"; // URL of the page
 
-    // fetching the page
-    let response = Client::new()
-        .get(url)
-        .send()
-        .await
-        .unwrap()
-        .text()
-        .await
-        .unwrap();
+    // metadata
+    let meta_bible = load_metadata()?;
 
-    // loading metadata from books.yaml
-    let meta_bible = load_metadata().unwrap();
+    // getting metadata for Genesis
+    let meta_book = get_book_metadata(&meta_bible, "Genesis").ok_or("Book not found")?;
+    let mut chapters = meta_book.chapters.keys().collect::<Vec<&u32>>();
 
-    let meta_book = get_book_metadata(&meta_bible, "Genesis");
-    println!("{:#?}", meta_book);
+    chapters.sort();
+    println!("{:?}", chapters);
 
+    let response = fetch(url).await?;
     let document = Document::from(response.as_str());
 
-    let verses = scrape_verses(document);
+    // let verses = scrape_verses(document);
 
-    println!("{:?}", verses);
+    for chapter in chapters {
+        //only chapter 1 atm
+        if chapter == &1 {
+            // loop over metadata
+            let verses = meta_book.chapters.get(chapter).unwrap();
 
-    println!("Scraping done!");
-}
+            //TODO: find a way to discover which is the next page
+            // make use of the metadata to know the next page
+            // then concatenate the chapter number to assemble the URL
+            // let url = format!("https://www.vatican.va/archive/ENG0839/__P3.HTM{}", chapter);
 
-// Loop over paragraphs with class "MsoNormal" to extract the verses, number only
-fn scrape_verses(document: Document) -> Vec<i32> {
-    let mut verses = Vec::new();
-    for node in document.find(Name("p").and(Class("MsoNormal"))) {
-        let text = node.text().trim().to_string();
-        let verse_number = scrape_verse_number(&text);
-        match verse_number {
-            Ok(verse_number) => verses.push(verse_number),
-            Err(_) => continue,
+            for node in document.find(Name("p").and(Class("MsoNormal"))) {
+                let mut verse: Verse = Verse::new(0, "".to_string());
+
+                let text = node.text().trim().to_string();
+
+                let verse_number = scrape_verse_number(&text);
+                match verse_number {
+                    Ok(verse_number) => {
+                        verse.number = verse_number;
+                    }
+                    Err(_) => {
+                        verse.text = scrape_verse_text(&text);
+                    }
+                }
+                println!("{:?}", verse);
+            }
         }
     }
-    verses
+
+    // println!("{:?}", verses);
+
+    println!("Scraping done!");
+    Ok(())
 }
 
-fn scrape_book_title(text: &str) -> String {
-    text.trim().to_string()
-}
+// fn initialize_data_structure() ->
 
-fn scrape_verse_number(text: &str) -> Result<i32, std::num::ParseIntError> {
-    let parsed = text.parse::<i32>()?;
+// Loop over paragraphs with class "MsoNormal" to extract the verses, number only
+// fn scrape_verses(document: Document) -> Vec<u32> {
+//     let mut verses = Vec::new();
+//     for node in document.find(Name("p").and(Class("MsoNormal"))) {
+//         let text = node.text().trim().to_string();
+//         let verse_number = scrape_verse_number(&text);
+//         match verse_number {
+//             Ok(verse_number) => verses.push(verse_number),
+//             Err(_) => continue,
+//         }
+//     }
+//     verses
+// }
+
+// fn scrape_book_title(text: &str) -> String {
+//     text.trim().to_string()
+// }
+
+fn scrape_verse_number(text: &str) -> Result<u32, std::num::ParseIntError> {
+    let parsed = text.parse::<u32>()?;
     Ok(parsed)
 }
 
@@ -62,7 +97,7 @@ fn scrape_verse_text(text: &str) -> String {
 
 fn load_metadata() -> Result<MetaBible, Box<dyn std::error::Error>> {
     let yaml_content = fs::read_to_string(
-        "/Users/luciano/Rust/verbum/bible-scraper/src/the_new_american_bible/books.yaml",
+        "/home/lucallero/Rust/verbum/bible-scraper/src/the_new_american_bible/books.yaml",
     )?;
     let bible: MetaBible = serde_yaml::from_str(&yaml_content)?;
 
@@ -73,6 +108,6 @@ fn load_metadata() -> Result<MetaBible, Box<dyn std::error::Error>> {
 fn get_book_metadata<'a>(
     meta_bible: &'a MetaBible,
     book_title: &'a str,
-) -> Option<&'a crate::model::MetaBook> {
+) -> Option<&'a crate::models::MetaBook> {
     meta_bible.books.get(book_title)
 }
